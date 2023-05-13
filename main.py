@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 
 
+from editor import Editor
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -23,7 +24,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("PyQt5 editor")
         self.resize(1300, 900)
 
-        self.setStyleSheet(open("./src/css/style.css", "r").read())
+        self.setStyleSheet(open("./src/css/style.qss", "r").read())
 
         ##alternative consolel
         self.window_font = QFont("Fire Code")
@@ -34,9 +35,6 @@ class MainWindow(QMainWindow):
         self.set_up_body()
         self.statusBar().showMessage("hi!")
         
-        
-        
-
 
         self.show()
 
@@ -53,6 +51,16 @@ class MainWindow(QMainWindow):
         open_file = file_menu.addAction("Open File")
         open_file.setShortcut("Ctrl+O")
         open_file.triggered.connect(self.open_file)
+
+        file_menu.addSeparator()
+        save_file = file_menu.addAction("Save")
+        save_file.setShortcut("Ctrl+S")
+        save_file.triggered.connect(self.save_file)
+
+        save_as = file_menu.addAction("Save As")
+        save_as.setShortcut("Ctrl+Shift+S")
+        save_as.triggered.connect(self.save_as)
+
         
         open_folder = file_menu.addAction("Open Folder")
         open_folder.setShortcut("Ctrl+K")
@@ -83,56 +91,12 @@ class MainWindow(QMainWindow):
         gen_DomAction.triggered.connect(self.gen_DOM)
         
         
-    def new_file(self):
-        ...
-    def open_file(self):
-        ...
-    def open_folder(self):
-        ...
-        
-    def copy(self):
-        ...
-    def paste(self):
-        ...
-    def cut(self):
-        ...
-        
-    def gen_DOM(self):
-        ...
-        
         
     def get_editor(self) -> QsciScintilla:
-        #instnace 
-        
-        editor = QsciScintilla()
-        editor.setUtf8(True)
-        editor.setFont(self.window_font)
-        
-        editor.setBraceMatching(QsciScintilla.SloppyBraceMatch)
-        
-        #indentation
-        editor.setIndentationGuides(True)
-        editor.setTabWidth(4)
-        editor.setIndentationsUseTabs(False)
-        editor.setAutoIndent(True)
-        
-        ## autocomplete
-        # TODO: add autocompletion
-        
-        #caret
-        # TODO: ADD caret settings 
-        
-        # EOL
-        
-        editor.setEolMode(QsciScintilla.EolWindows)
-        editor.setEolVisibility(False)
-        
-        # lexet TODO: add lexer
-        
-        editor.setLexer(None)
-        
-        
+
+        editor = Editor()
         return editor
+        
     
     def is_binary(self, path):
         #########################
@@ -142,31 +106,47 @@ class MainWindow(QMainWindow):
             return b'\0' in f.read(1024)
     
     def set_new_tab(self, path: Path, is_new_file=False):
+        editor = self.get_editor()
+
+        if is_new_file:
+            self.tab_view.addTab(editor,"untitled")
+            self.setWindowTitle("untitled")
+            self.statusBar().showMessage("Opened untitled")
+            self.tab_view.setCurrentIndex(self.tab_view.count () - 1)
+            self.current_file = None
+            return
+
         if not path.is_file():
             return
-        if  not is_new_file and self.is_binary(path):
+        
+        if self.is_binary(path):
             self.statusBar().showMessage("Binary file can't be opened")
             
         #check if file is already opened
         
-        if not is_new_file:
             for i in range(self.tab_view.count()):
                 if self.tab_view.tabText(i) == path.name:
                     self.tab_view.setCurrentIndex(i)
                     self.current_file = path
                     return
                 
-        ## create a new tab 
-        editor = self.get_editor()
+        
+
+        #Create new tabe
         self.tab_view.addTab(editor, path.name)
-        if not is_new_file:
-            editor.setText(path.read_text())
+        editor.setText(path.read_text())
         self.setWindowTitle(path.name)
         self.current_file = path
         self.tab_view.setCurrentIndex(self.tab_view.count() - 1)
         self.statusBar().showMessage(f'opened {path.name}',2000)
         
-            
+    def get_side_bar_label(self,path,name):
+        label =QLabel()
+        label.setPixmap(QPixmap(path).scaled(QSize(25,25)))
+        label.setAlignment(Qt.AlignmentFlag.AlignTop)
+        label.setFont(self.window_font)
+        label.mousePressEvent = lambda e: self.show_hide_tab(e,name)
+        return label
 
 
     def set_up_body(self):
@@ -198,11 +178,7 @@ class MainWindow(QMainWindow):
         side_bar_layout.setAlignment(Qt.AlignTop | Qt.AlignCenter)
         
         ###setup labels
-        folder_label = QLabel()
-        folder_label.setPixmap(QPixmap("./src/icons/folder-icon-blue.svg").scaled(QSize(25,25)))
-        folder_label.setAlignment(Qt.AlignmentFlag.AlignTop)
-        folder_label.setFont(self.window_font)
-        folder_label.mousePressEvent = self.show_hide_tab
+        folder_label = self.get_side_bar_label("./src/icons/folder-icon-blue.svg","folder-icon")
         side_bar_layout.addWidget(folder_label)
         self.side_bar.setLayout(side_bar_layout)
         
@@ -282,7 +258,7 @@ class MainWindow(QMainWindow):
         self.tab_view.setTabsClosable(True)
         self.tab_view.setMovable(True) 
         self.tab_view.setDocumentMode(True)
-        
+        self.tab_view.tabCloseRequested.connect(self.close_tab)
         
         
         
@@ -296,10 +272,16 @@ class MainWindow(QMainWindow):
         
         self.setCentralWidget(body_frame)
         
+    def close_tab(self, index):
+        self.tab_view.removeTab(index)
         
-    def show_hide_tab(self):
-        ...
-    
+
+    def show_hide_tab(self,e,type_):
+        if self.tree_frame.isHidden():
+            self.tree_frame.show()
+        else:
+            self.tree_frame.hide()
+
     def tree_view_context_menu(self):
         pass
         
@@ -310,6 +292,71 @@ class MainWindow(QMainWindow):
         
         pass
         
+    def new_file(self):
+            self.set_new_tab(None,is_new_file=True)
+
+    def save_file(self):
+        self.current_file is None and self.tab_view.count() > 0
+        self.save_as()
+
+        editor = self.tab_view.currentWidget()
+        self.current_file.write_text(editor.text())
+        self.statusBar().showMessage(f"Saved{self.current_file.name}", 2000)
+
+    def save_as(self):
+        #Save as
+        editor = self.tab_view.currentWidget()
+        if editor is None:
+            return
+        
+        file_path = QFileDialog.getSaveFileName(self, "Save as", os.getcwd())[0]
+        if file_path == '':
+            self.statusBar().showMessage("Cancelled", 2000)
+            return
+        path = Path(file_path)
+        path.write_text(editor.text())
+        self.tab_view.setTabText(self.tab_view.currentIndex(),path.name)
+        self.statusBar().showMessage(f"Saved {path.name}",2000)
+        self.current_file = path
+
+
+    def open_file(self):
+        ops = QFileDialog.Options()
+        ops |= QFileDialog.DontUseNativeDialog
+
+        new_file, _ = QFileDialog.getOpenFileName(self,
+                    "Pick A File", "","All Files (*);;Python Files (*.py)", 
+                    options=ops)
+        if new_file == '':
+            self.statusBar().showMessage("Canceled", 2000)
+            return
+        f = Path(new_file)
+        self.set_new_tab(f)
+
+    def open_folder(self):
+        #open folder
+        ops = QFileDialog.Options() #optional
+        ops |=QFileDialog.DontUserNativeDialog
+
+        new_folder, _ = QFileDialog.getExistingDirectory(self,"Pick a folder","",options=ops)
+        if new_folder:
+            self.model.setRootPath(new_folder)
+            self.tree_view.setRootIndex(self.model.index(new_folder))
+            self.statusBar().showMessage(f"Opened {new_folder}", 2000)
+        
+    def copy(self):
+        editor = self.tab_view.currentWidget()
+        if editor is not None:
+            editor.copy()
+
+
+    def paste(self):
+        ...
+    def cut(self):
+        ...
+        
+    def gen_DOM(self):
+        ...
         
         
         
