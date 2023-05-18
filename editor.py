@@ -11,8 +11,7 @@ from PyQt5.QtGui import *
 
 import keyword
 import pkgutil
-import resouces
-
+from lexer import HTMLCustomLexer
 
 class Editor(QsciScintilla):
     
@@ -41,18 +40,20 @@ class Editor(QsciScintilla):
             self.setAutoCompletionUseSingle(QsciScintilla.AcusNever)
         
         #caret
-       # self.setCaretForegroundColor(QColor("#dedcdc"))
+            self.setCaretForegroundColor(QColor("#dedcdc"))
             self.setCaretLineVisible(True)
             self.setCaretWidth(2)
-       # self.setCaretLineBackgroundColor(QColor("#2c313c"))
+            self.setCaretLineBackgroundColor(QColor("#2c313c"))
         
         # EOL
             self.setEolMode(QsciScintilla.EolWindows)
             self.setEolVisibility(False)
         
         # lexet for syntax highlightning
-            self.pylexer = QsciLexerPython() # Lexer Languajes
+
+            self.pylexer = HTMLCustomLexer(self) # Lexer Languajes¿
             self.pylexer.setDefaultFont(self.window_font)
+
         
         #Api
             self.api = QsciAPIs(self.pylexer)
