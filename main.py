@@ -5,19 +5,21 @@ from PyQt5.Qsci import *
 from PyQt5.QtGui import *
 
 
+
 from pathlib import Path
 import sys
 
 
 from editor import Editor
 from fuzzy_searcher import SearchItem, SearchWorker
+from file_manager import FileManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super(QMainWindow, self).__init__()
         self.side_bar_clr = "#282c34"
         self.init_ui()
-        
+
         self.current_file = None
         self.current_side_bar = None
 
@@ -36,7 +38,7 @@ class MainWindow(QMainWindow):
         self.set_up_menu()
         self.set_up_body()
         self.statusBar().showMessage("hi!")
-        
+
 
         self.show()
 
@@ -45,11 +47,11 @@ class MainWindow(QMainWindow):
         menu_bar = self.menuBar()
         #file menu
         file_menu = menu_bar.addMenu("File")
-        
+
         new_file = file_menu.addAction("New")
         new_file.setShortcut("Ctrl+N")
         new_file.triggered.connect(self.new_file)
-        
+
         open_file = file_menu.addAction("Open File")
         open_file.setShortcut("Ctrl+O")
         open_file.triggered.connect(self.open_file)
@@ -63,37 +65,37 @@ class MainWindow(QMainWindow):
         save_as.setShortcut("Ctrl+Shift+S")
         save_as.triggered.connect(self.save_as)
 
-        
+
         open_folder = file_menu.addAction("Open Folder")
         open_folder.setShortcut("Ctrl+K")
         open_folder.triggered.connect(self.open_folder)
-        
+
         #edit menu
-        
+
         edit_menu = menu_bar.addMenu("Edit")
-        
+
         copy_action = edit_menu.addAction("Copy")
         copy_action.setShortcut("Ctrl+C")
         copy_action.triggered.connect(self.copy)
-        
+
         paste_action = edit_menu.addAction("Paste")
         paste_action.setShortcut("Ctrl+V")
         paste_action.triggered.connect(self.paste)
-        
+
         cut_action = edit_menu.addAction("Cut")
         cut_action.setShortcut("Ctrl+X")
         cut_action.triggered.connect(self.cut)
-        
+
         #More menu
-        
+
         more_menu = menu_bar.addMenu("More")
-        
+
         gen_DomAction = more_menu.addAction("Generate DOM")
         gen_DomAction.setShortcut("Ctrl+G")
         gen_DomAction.triggered.connect(self.gen_DOM)
-        
-        
-        
+
+
+
     def get_editor(self) -> QsciScintilla:
 
         editor = Editor()
@@ -120,19 +122,19 @@ class MainWindow(QMainWindow):
 
         if not path.is_file():
             return
-        
+
         if self.is_binary(path):
             self.statusBar().showMessage("Binary file can't be opened")
-            
+
         #check if file is already opened
-        
+
             for i in range(self.tab_view.count()):
                 if self.tab_view.tabText(i) == path.name:
                     self.tab_view.setCurrentIndex(i)
                     self.current_file = path
                     return
-                
-        
+
+
 
         #Create new tabe
         self.tab_view.addTab(editor, path.name)
@@ -144,7 +146,7 @@ class MainWindow(QMainWindow):
 
     def set_cursor_pointer(self, e):
         self.setCursor(Qt.PointingHandCursor)
-    
+
     def set_cursor_arrow(self, e):
         self.setCursor(Qt.ArrowCursor)
 
@@ -154,11 +156,11 @@ class MainWindow(QMainWindow):
         label.setAlignment(Qt.AlignmentFlag.AlignTop)
         label.setFont(self.window_font)
         label.mousePressEvent = lambda e: self.show_hide_tab(e,name)
-        #chanig cursor on hover 
+        #chanig cursor on hover
         label.enterEvent = self.set_cursor_pointer
         label.leaveEvent = self.set_cursor_arrow
         return label
-    
+
     def get_frame(self) -> QFrame:
         frame = QFrame()
         frame.setFrameShape(QFrame.NoFrame)
@@ -192,11 +194,21 @@ class MainWindow(QMainWindow):
         body.setContentsMargins(0, 0, 0, 0)
         body.setSpacing(0)
         body_frame.setLayout(body)
-        
-        
+
+        ##################
+        ####TAB VIEW####
+
+        ## tab widget to add editor to
+        self.tab_view = QTabWidget()
+        self.tab_view.setContentsMargins(0,0,0,0)
+        self.tab_view.setTabsClosable(True)
+        self.tab_view.setMovable(True)
+        self.tab_view.setDocumentMode(True)
+        self.tab_view.tabCloseRequested.connect(self.close_tab)
+
          #####################
         ###SIDE BAR####
-        
+
         self.side_bar = QFrame()
         self.side_bar.setFrameShape(QFrame.StyledPanel)
         self.side_bar.setFrameShadow(QFrame.Plain)
@@ -207,7 +219,7 @@ class MainWindow(QMainWindow):
         side_bar_layout.setContentsMargins(5,10,5,0)
         side_bar_layout.setSpacing(0)
         side_bar_layout.setAlignment(Qt.AlignTop | Qt.AlignCenter)
-        
+
         ###setup labels
         folder_label = self.get_side_bar_label("./src/icons/folder-icon-blue.svg","folder-icon")
         side_bar_layout.addWidget(folder_label)
@@ -216,34 +228,46 @@ class MainWindow(QMainWindow):
         side_bar_layout.addWidget(search_label)
 
         self.side_bar.setLayout(side_bar_layout)
-        
-        
+
+
         #split view
         self.hsplit = QSplitter(Qt.Horizontal)
 
         #####################
         ###FILE MANAGER####
-        
+
         #frame and layout to hod tree view (file manager window)
         self.file_manager_frame = self.get_frame()
         self.file_manager_frame.setMaximumWidth(400)
         self.file_manager_frame.setMinimumWidth(200)
-        tree_frame_layout = QVBoxLayout()
-        tree_frame_layout.setContentsMargins(0,0,0,0)
-        tree_frame_layout.setSpacing(0)
-        
-        
+
+        self.file_manager_layout = QVBoxLayout()
+        self.file_manager_layout.setContentsMargins(0,0,0,0)
+        self.file_manager_layout.setSpacing(0)
+
+        self.file_manager = FileManager(
+            tab_view=self.tab_view,
+            set_new_tab=self.set_new_tab,
+            main_window=self
+        )
+
+        # setup layout
+        self.file_manager_layout.addWidget(self.file_manager)
+        self.file_manager_frame.setLayout(self.file_manager_layout)
+
+
+
         #create file system model to show in tree view
-        
-        
+
+
         self.model = QFileSystemModel()
         self.model.setRootPath(os.getcwd())
         #file system filter
         self.model.setFilter(QDir.NoDotAndDotDot | QDir.AllDirs | QDir.Files)
-        
+
          #####################
           ###FILE VIEWER####
-        
+
         self.tree_view = QTreeView()
         self.tree_view.setFont(QFont("Helvetica",13))
         self.tree_view.setModel(self.model)
@@ -252,27 +276,27 @@ class MainWindow(QMainWindow):
         self.tree_view.setSelectionBehavior(QTreeView.SelectRows)
         self.tree_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
         # add custom context menu
-        
+
         self.tree_view.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_view.customContextMenuRequested.connect(self.tree_view_context_menu)
         #handling click
-        
+
         self.tree_view.clicked.connect(self.tree_view_clicked)
         self.tree_view.setIndentation(10)
         self.tree_view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        
+
         #hide header and other stuff
-        
+
         self.tree_view.setHeaderHidden(True)
         self.tree_view.setColumnHidden(1,True)
         self.tree_view.setColumnHidden(2,True)
-        self.tree_view.setColumnHidden(3,True)        
+        self.tree_view.setColumnHidden(3,True) 
 
         ##search view##
         self.search_frame = self.get_frame()
         self.search_frame.setMaximumWidth(400)
         self.search_frame.setMinimumWidth(200)
-        
+
         search_layout = QVBoxLayout()
         search_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         search_layout.setContentsMargins(0, 10, 0, 0)
@@ -282,18 +306,7 @@ class MainWindow(QMainWindow):
         search_input.setPlaceholderText("Search")
         search_input.setFont(self.window_font)
         search_input.setAlignment(Qt.AlignmentFlag.AlignTop)
-        search_input.setStyleSheet("""
-        QLineEdit {
-            background-color: #21252b;
-            border-radius: 5px;
-            border: 1px solid #D3D3D3;
-            padding: 5px;
-            color: #D3D3D3;
-        }
-        QLineEdit:hover {
-            color:wite
-        }
-        """)
+
 
          ############# CHECKBOX ################
         self.search_checkbox = QCheckBox("Search in modules")
@@ -327,40 +340,24 @@ class MainWindow(QMainWindow):
         """)
 
         self.search_list_view.itemClicked.connect(self.search_list_view_clicked)
-        
+
         search_layout.addWidget(self.search_checkbox)
         search_layout.addWidget(search_input)
         search_layout.addSpacerItem(QSpacerItem(5, 5, QSizePolicy.Minimum, QSizePolicy.Minimum))
         search_layout.addWidget(self.search_list_view)
-        
+
         self.search_frame.setLayout(search_layout)
 
-        ## setup layout
-        tree_frame_layout.addWidget(self.tree_view)
-        self.file_manager_frame.setLayout(tree_frame_layout)
-
-        ##################
-        ####TAB VIEW####
-
-        ## tab widget to add editor to
-        
-        self.tab_view = QTabWidget()
-        self.tab_view.setContentsMargins(0,0,0,0)
-        self.tab_view.setTabsClosable(True)
-        self.tab_view.setMovable(True) 
-        self.tab_view.setDocumentMode(True)
-        self.tab_view.tabCloseRequested.connect(self.close_tab)
-        
           #####################
         ###SETUP WIDGENTS####
         #add tree view and tab view
         self.hsplit.addWidget(self.file_manager_frame)
         body.addWidget(self.side_bar)
         self.hsplit.addWidget(self.tab_view)
-        
+
         body.addWidget(self.hsplit)
         body_frame.setLayout(body)
-        
+
         self.setCentralWidget(body_frame)
 
     def search_finshed(self, items):
@@ -473,13 +470,12 @@ class MainWindow(QMainWindow):
         ...
         
         
-        
-        
-         
+
+
+
 
 if __name__ == "__main__":
     app = QApplication([])
     window = MainWindow()
     sys.exit(app.exec_())
-       
 

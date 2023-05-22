@@ -1,18 +1,29 @@
 import re
+import json
+import typing
+import types
+import keyword
+import builtins
+from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
+from PyQt5.QtGui import QFont, QColor, QPixmap
 from PyQt5.QtCore import *
-from PyQt5.QtGui import *
 from PyQt5.Qsci import QsciLexerCustom, QsciScintilla
 
-class HTMLCustomLexer(QsciLexerCustom):
 
-    def __init__(self, parent):
+# Config type 
+DefaultConfig = typing.Dict[str, typing.Union[str, tuple[str, int]]]
+
+class HTMLCustomLexer(QsciLexerCustom):
+    """Custom Lexer class for HTML"""
+
+    def __init__(self, parent, theme=None):
         super(HTMLCustomLexer, self).__init__(parent)
 
         self.color1 = "#abb2bf"
         self.color2 = "#282c34"
 
-        # Ajustes predeterminados
+        # Default settings
         self.setDefaultColor(QColor(self.color1))
         self.setDefaultPaper(QColor(self.color2))
         self.setDefaultFont(QFont("Consolas", 14))
@@ -24,28 +35,49 @@ class HTMLCustomLexer(QsciLexerCustom):
             "th", "form", "input", "button", "select", "option", "script", "style"
         ]
 
-        # Color por estilo
+        # Color styles
         self.DEFAULT = 0
         self.KEYWORD = 1
         self.STRING = 2
         self.BRACKETS = 3
         self.COMMENTS = 4
 
-        # Estilos
-        self.setColor(QColor(self.color1), self.DEFAULT)
-        self.setColor(QColor("#c678dd"), self.KEYWORD)
-        self.setColor(QColor("#98C379"), self.STRING)
-        self.setColor(QColor("#c678dd"), self.BRACKETS)
-        self.setColor(QColor("#777777"), self.COMMENTS)
+        # Load theme
+        if theme is None:
+            self.theme = "./theme.json"
+        else:
+            self.theme = theme
+        self.load_theme()
 
-        # Papel de color
+        # Image preview label
+        self.image_label = QLabel(parent)
+        self.image_label.setGeometry(10, 10, 200, 200)  # Adjust the geometry as needed
+
+    def load_theme(self):
+        with open(self.theme, "r") as f:
+            theme_data = json.load(f)
+
+        # Update colors from theme
+        if "color1" in theme_data:
+            self.color1 = theme_data["color1"]
+        if "color2" in theme_data:
+            self.color2 = theme_data["color2"]
+
+        # Set colors
+        self.setColor(QColor(self.color1), self.DEFAULT)
+        self.setColor(QColor(theme_data.get("keyword_color", "#c678dd")), self.KEYWORD)
+        self.setColor(QColor(theme_data.get("string_color", "#98C379")), self.STRING)
+        self.setColor(QColor(theme_data.get("brackets_color", "#2FF2E6")), self.BRACKETS)
+        self.setColor(QColor(theme_data.get("comments_color", "#777777")), self.COMMENTS)
+
+        # Set paper colors
         self.setPaper(QColor(self.color2), self.DEFAULT)
         self.setPaper(QColor(self.color2), self.KEYWORD)
         self.setPaper(QColor(self.color2), self.STRING)
         self.setPaper(QColor(self.color2), self.BRACKETS)
         self.setPaper(QColor(self.color2), self.COMMENTS)
 
-        # Fuente
+        # Set font
         self.setFont(QFont("Consolas", 14, weight=QFont.Bold), self.DEFAULT)
         self.setFont(QFont("Consolas", 14, weight=QFont.Bold), self.KEYWORD)
 
