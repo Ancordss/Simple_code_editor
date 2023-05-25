@@ -1,5 +1,11 @@
 # Simple_code_editor
 
+
+### requisitos
+
+instala graphviz [Aqui](https://graphviz.org/download/)
+
+
 ## requisitos para copilar desde 0
 
 ### windows

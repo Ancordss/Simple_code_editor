@@ -14,6 +14,9 @@ from editor import Editor
 from fuzzy_searcher import SearchItem, SearchWorker
 from file_manager import FileManager
 
+from bs4 import BeautifulSoup
+from graphviz import Digraph
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super(QMainWindow, self).__init__()
@@ -496,8 +499,83 @@ class MainWindow(QMainWindow):
     def cut(self):
         ...
         
+       
     def gen_DOM(self):
-        ...
+        file_dialog = QFileDialog()
+        options = file_dialog.Options()
+        options |= file_dialog.DontUseNativeDialog
+        file_path, _ = file_dialog.getOpenFileName(self, "Abrir archivo HTML", "", "HTML Files (*.html)",
+                                                   options=options)
+
+        if file_path:
+            with open(file_path, "r") as file:
+                content = file.read()
+
+                # Generar el gráfico del DOM dentro de generateDOM
+                def generate_dom_graph(html):
+                    # Analizar el HTML con BeautifulSoup
+                    soup = BeautifulSoup(html, 'html.parser')
+
+                    # Crear un gráfico de Graphviz
+                    graph = Digraph(format='png')
+
+                    # Función recursiva para generar el gráfico del DOM
+                    def generate_dom(node, parent_id=None):
+                        # Obtener el nombre de la etiqueta HTML
+                        tag_name = node.name if node.name else 'text'
+
+                        # Generar un identificador único para el nodo
+                        node_id = f'{tag_name}_{id(node)}'
+
+                        # Agregar el nodo al gráfico
+                        graph.node(node_id, label=tag_name)
+
+                        # Agregar una arista desde el padre (si existe)
+                        if parent_id:
+                            graph.edge(parent_id, node_id)
+
+                        # Recorrer los hijos del nodo
+                        for child in node.children:
+                            # Solo procesar nodos del tipo Tag
+                            if child.name:
+                                generate_dom(child, node_id)
+
+                    # Generar el gráfico del DOM comenzando desde el nodo raíz
+                    generate_dom(soup)
+
+                    return graph
+
+                # Generar el gráfico del DOM utilizando la función generate_dom_graph dentro de generateDOM
+                graph = generate_dom_graph(content)
+
+                # Obtener el nombre del archivo
+                file_name = os.path.basename(file_path)
+
+                # Obtener la extensión del archivo
+                file_ext = os.path.splitext(file_name)[1]
+
+                # Ruta de la carpeta de destino
+                output_folder = 'DOMS'
+
+                # Crear la carpeta de destino si no existe
+                if not os.path.exists(output_folder):
+                    os.makedirs(output_folder)
+
+                # Ruta del archivo PNG
+                png_name = f'{os.path.splitext(file_name)[0]}_dom_graph'
+                png_path = os.path.join(output_folder, png_name)
+
+                # Ruta del archivo DOT
+                dot_name = f'{os.path.splitext(file_name)[0]}_dom_graph.dot'
+                dot_path = os.path.join(output_folder, dot_name)
+
+                # Guardar el gráfico como archivo de imagen PNG
+                graph.render(png_path, view=True)
+
+                # Guardar el gráfico como archivo DOT
+                with open(dot_path, 'w') as dot_file:
+                    dot_file.write(graph.source)
+        
         
         
 
