@@ -12,13 +12,16 @@ from PyQt5.QtGui import *
 import keyword
 import pkgutil
 from lexer import HTMLCustomLexer
+from typing import TYPE_CHECKING
+
 
 class Editor(QsciScintilla):
 
-    def __init__(self,parent=None):
+    def __init__(self,main_window,parent=None):
             super (Editor, self).__init__(parent)
+            self.main_window = main_window
+            self._current_file_changed = False
             
-
         #Encoding
             self.setUtf8(True)
         #Font
@@ -80,6 +83,11 @@ class Editor(QsciScintilla):
 
         #key press
             #self.keyPressEvent = self.handle_editor_press
+    
+    @property
+    def current_file_changed(self,value:bool):
+        curr_index = self.main_window
+    
     def keyPressEvent(self,e: QKeyEvent) -> None:
             if e.modifiers() == Qt.ControlModifier and e.key() == Qt.Key_Space:
                 self.autoCompleteFromAll()

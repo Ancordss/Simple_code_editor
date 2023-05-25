@@ -82,6 +82,7 @@ class FileManager(QTreeView):
         menu.addAction("New File")
         menu.addAction("New Folder")
         menu.addAction("Open In File Manager")
+        
 
         if ix.column() == 0:
             menu.addAction("Rename")

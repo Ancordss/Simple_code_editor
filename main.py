@@ -38,9 +38,20 @@ class MainWindow(QMainWindow):
         self.set_up_menu()
         self.set_up_body()
         self.statusBar().showMessage("hi!")
+        self.set_up_status_bar()
 
 
         self.show()
+    
+    def set_up_status_bar(self):
+        #Create status bar
+        stat = QStatusBar(self)
+        stat.setStyleSheet("color: #282c34;")
+        stat.showMessage("Ready",300)
+        self.setStatusBar(stat)
+        
+        
+        
 
 
     def set_up_menu(self):
@@ -98,7 +109,7 @@ class MainWindow(QMainWindow):
 
     def get_editor(self) -> QsciScintilla:
 
-        editor = Editor()
+        editor = Editor(self)
         return editor
         
     
@@ -371,11 +382,30 @@ class MainWindow(QMainWindow):
         editor.setCursorPosition(item.lineno, item.end)
         editor.setFocus()  
     
+    def show_dialog(self, title, msg) -> int:
+        dialog = QMessageBox(self)
+        dialog.setFont(self.font())
+        dialog.font().setPointSize(14)
+        dialog.setWindowTitle(title)
+        dialog.setWindowIcon(QIcon(":/icons/close-icon.svg"))
+        dialog.setText(msg)
+        dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        dialog.setDefaultButton(QMessageBox.No)
+        dialog.setIcon(QMessageBox.Warning)
+        return dialog.exec_()
+    
     
     def close_tab(self, index):
+        editor: Editor = self.tab_view.currentWidget()
+        if editor.current_file_changed:
+            dialog = self.show_dialog(
+                "Close", f"Do you want to save the changes made to{self.current_file.name}?"
+            )
+            if dialog == QMessageBox.Yes:
+                self.save_file()
+                
         self.tab_view.removeTab(index)
         
-
     def show_hide_tab(self,e,type_):
         if type_ == "folder-icon":
             if not (self.file_manager_frame in self.hsplit.children()):
