@@ -16,6 +16,11 @@ from file_manager import FileManager
 
 from bs4 import BeautifulSoup
 from graphviz import Digraph
+import tempfile
+import logging
+
+#configure logging
+logging.basicConfig(level=logging.INFO)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -25,6 +30,8 @@ class MainWindow(QMainWindow):
 
         self.current_file = None
         self.current_side_bar = None
+        self.file_watcher = QFileSystemWatcher()
+        self.file_watcher.fileChanged.connect(self.updateDOM)
 
     def init_ui(self):
 
@@ -142,11 +149,11 @@ class MainWindow(QMainWindow):
 
         #check if file is already opened
 
-            for i in range(self.tab_view.count()):
-                if self.tab_view.tabText(i) == path.name:
-                    self.tab_view.setCurrentIndex(i)
-                    self.current_file = path
-                    return
+        for i in range(self.tab_view.count()):
+            if self.tab_view.tabText(i) == path.name:
+                self.tab_view.setCurrentIndex(i)
+                self.current_file = path
+                return
 
 
 
@@ -434,14 +441,13 @@ class MainWindow(QMainWindow):
         p = Path(path)
         self.set_new_tab(p)
         
-        pass
         
     def new_file(self):
             self.set_new_tab(None,is_new_file=True)
 
     def save_file(self):
         self.current_file is None and self.tab_view.count() > 0
-        self.save_as()
+        #self.save_as()
 
         editor = self.tab_view.currentWidget()
         self.current_file.write_text(editor.text())
@@ -499,13 +505,79 @@ class MainWindow(QMainWindow):
     def cut(self):
         ...
         
-       
+    def updateDOM(self):
+        if self.current_file:
+            with open(self.current_file, "r") as file:
+                content = file.read()
+
+                # Generar el gráfico del DOM dentro de generate_dom_graph
+                def generate_dom_graph(html):
+                    # Analizar el HTML con BeautifulSoup
+                    soup = BeautifulSoup(html, 'html.parser')
+
+                    # Crear un gráfico de Graphviz
+                    graph = Digraph(format='png')
+
+                    # Función recursiva para generar el gráfico del DOM
+                    def generate_dom(node, parent_id=None):
+                        # Obtener el nombre de la etiqueta HTML
+                        tag_name = node.name if node.name else 'text'
+
+                        # Generar un identificador único para el nodo
+                        node_id = f'{tag_name}_{id(node)}'
+
+                        # Agregar el nodo al gráfico
+                        graph.node(node_id, label=tag_name)
+
+                        # Agregar una arista desde el padre (si existe)
+                        if parent_id:
+                            graph.edge(parent_id, node_id)
+
+                        # Recorrer los hijos del nodo
+                        for child in node.children:
+                            # Solo procesar nodos del tipo Tag
+                            if child.name:
+                                generate_dom(child, node_id)
+
+                    # Generar el gráfico del DOM comenzando desde el nodo raíz
+                    generate_dom(soup)
+
+                    return graph
+
+                # Generar el gráfico del DOM utilizando la función generate_dom_graph dentro de generateDOM
+                graph = generate_dom_graph(content)
+
+                # Obtener el nombre del archivo
+                file_name = os.path.basename(self.current_file)
+
+                # Obtener la extensión del archivo
+                file_ext = os.path.splitext(file_name)[1]
+
+                # Ruta de la carpeta de destino
+                output_folder = 'DOMS'
+
+                # Crear la carpeta de destino si no existe
+                if not os.path.exists(output_folder):
+                    os.makedirs(output_folder)
+
+                # Ruta del archivo PNG
+                png_name = f'{os.path.splitext(file_name)[0]}_dom_graph'
+                png_path = os.path.join(output_folder, png_name)
+
+                # Ruta del archivo DOT
+                dot_name = f'{os.path.splitext(file_name)[0]}_dom_graph.dot'
+                dot_path = os.path.join(output_folder, dot_name)
+
+                # Guardar el gráfico como archivo de imagen PNG
+                graph.render(png_path, view=True)
+
+                # Guardar el gráfico como archivo DOT
+                with open(dot_path, 'w') as dot_file:
+                    dot_file.write(graph.source) 
+                    
     def gen_DOM(self):
-        file_dialog = QFileDialog()
-        options = file_dialog.Options()
-        options |= file_dialog.DontUseNativeDialog
-        file_path, _ = file_dialog.getOpenFileName(self, "Abrir archivo HTML", "", "HTML Files (*.html)",
-                                                   options=options)
+        file_path = self.current_file
+        logging.info('Generating DOM; path: {}'.format(file_path))
 
         if file_path:
             with open(file_path, "r") as file:
@@ -555,11 +627,11 @@ class MainWindow(QMainWindow):
                 file_ext = os.path.splitext(file_name)[1]
 
                 # Ruta de la carpeta de destino
-                output_folder = 'DOMS'
+                temp_dir = tempfile.gettempdir()
+                output_folder = os.path.join(temp_dir, 'DOOMS')
 
                 # Crear la carpeta de destino si no existe
-                if not os.path.exists(output_folder):
-                    os.makedirs(output_folder)
+                os.makedirs(output_folder, exist_ok=True)
 
                 # Ruta del archivo PNG
                 png_name = f'{os.path.splitext(file_name)[0]}_dom_graph'
