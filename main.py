@@ -32,6 +32,7 @@ class MainWindow(QMainWindow):
         self.current_side_bar = None
         self.file_watcher = QFileSystemWatcher()
         self.file_watcher.fileChanged.connect(self.updateDOM)
+        
 
     def init_ui(self):
 
@@ -409,12 +410,10 @@ class MainWindow(QMainWindow):
         editor: Editor = self.tab_view.currentWidget()
         if editor.current_file_changed:
             dialog = self.show_dialog(
-                "Close", f"Do you want to save the changes made to{self.current_file.name}?"
+                "Close", f"Quieres Guardar los cambios a {self.current_file.name}?"
             )
             if dialog == QMessageBox.Yes:
                 self.save_file()
-                
-        self.tab_view.removeTab(index)
         
     def show_hide_tab(self,e,type_):
         if type_ == "folder-icon":
@@ -484,21 +483,18 @@ class MainWindow(QMainWindow):
         self.set_new_tab(f)
 
     def open_folder(self):
-        #open folder
-        ops = QFileDialog.Options() #optional
-        ops |=QFileDialog.DontUserNativeDialog
-
-        new_folder, _ = QFileDialog.getExistingDirectory(self,"Pick a folder","",options=ops)
+        new_folder = QFileDialog.getExistingDirectory(
+            self, "Pick A Folder", ""
+        )
         if new_folder:
-            self.model.setRootPath(new_folder)
-            self.tree_view.setRootIndex(self.model.index(new_folder))
+            self.file_manager.model.setRootPath(new_folder)
+            self.file_manager.setRootIndex(self.file_manager.model.index(new_folder))
             self.statusBar().showMessage(f"Opened {new_folder}", 2000)
         
     def copy(self):
         editor = self.tab_view.currentWidget()
         if editor is not None:
             editor.copy()
-
 
     def paste(self):
         ...
