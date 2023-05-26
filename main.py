@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.Qsci import *
 from PyQt5.QtGui import *
+from PyQt5.QtCore import Qt
+
 
 
 
@@ -22,17 +24,19 @@ import logging
 #configure logging
 logging.basicConfig(level=logging.INFO)
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super(QMainWindow, self).__init__()
         self.side_bar_clr = "#282c34"
+        self.realtime = False
         self.init_ui()
 
+        
         self.current_file = None
         self.current_side_bar = None
         self.file_watcher = QFileSystemWatcher()
-        self.file_watcher.fileChanged.connect(self.updateDOM)
-        
+        self.file_watcher.fileChanged.connect(self.gen_DOM)
 
     def init_ui(self):
 
@@ -82,6 +86,7 @@ class MainWindow(QMainWindow):
         save_file = file_menu.addAction("Save")
         save_file.setShortcut("Ctrl+S")
         save_file.triggered.connect(self.save_file)
+        save_file.triggered.connect(self.gen_DOM)
 
         save_as = file_menu.addAction("Save As")
         save_as.setShortcut("Ctrl+Shift+S")
@@ -91,6 +96,10 @@ class MainWindow(QMainWindow):
         open_folder = file_menu.addAction("Open Folder")
         open_folder.setShortcut("Ctrl+K")
         open_folder.triggered.connect(self.open_folder)
+        
+        open_image_action = file_menu.addAction("Open Image")
+        open_image_action.setShortcut("Ctrl+I")
+        open_image_action.triggered.connect(self.open_image)
 
         #edit menu
 
@@ -115,7 +124,7 @@ class MainWindow(QMainWindow):
         gen_DomAction = more_menu.addAction("Generate DOM")
         gen_DomAction.setShortcut("Ctrl+G")
         gen_DomAction.triggered.connect(self.gen_DOM)
-
+        
 
 
     def get_editor(self) -> QsciScintilla:
@@ -130,6 +139,11 @@ class MainWindow(QMainWindow):
         #########################
         with open(path, "rb") as f:
             return b'\0' in f.read(1024)
+        
+    def is_image(self, path):
+        image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
+        ext = os.path.splitext(path)[1].lower()
+        return ext in image_extensions
     
     def set_new_tab(self, path: Path, is_new_file=False):
         editor = self.get_editor()
@@ -147,6 +161,26 @@ class MainWindow(QMainWindow):
 
         if self.is_binary(path):
             self.statusBar().showMessage("Binary file can't be opened")
+            
+        if self.is_image(path):
+            
+            self.current_file = path
+            image_file = str(self.current_file)
+            logging.info(f"Image file {image_file}")
+            if image_file == '':
+                self.statusBar().showMessage("Canceled", 2000)
+                return
+
+            # Crear una nueva pestaña y mostrar la imagen en un QLabel
+            image_label = QLabel()
+            image_label.setScaledContents(True)
+            pixmap = QPixmap(image_file)
+            scaled_pixmap = pixmap.scaled(image_label.size(), Qt.AspectRatioMode.KeepAspectRatio)
+            image_label.setPixmap(scaled_pixmap)
+            self.tab_view.addTab(image_label, path.name)
+            self.setWindowTitle("Image")
+            self.tab_view.setCurrentIndex(self.tab_view.count() - 1)
+            self.current_file = None
 
         #check if file is already opened
 
@@ -155,16 +189,16 @@ class MainWindow(QMainWindow):
                 self.tab_view.setCurrentIndex(i)
                 self.current_file = path
                 return
+        if not self.is_binary(path):
 
 
-
-        #Create new tabe
-        self.tab_view.addTab(editor, path.name)
-        editor.setText(path.read_text())
-        self.setWindowTitle(path.name)
-        self.current_file = path
-        self.tab_view.setCurrentIndex(self.tab_view.count() - 1)
-        self.statusBar().showMessage(f'opened {path.name}',2000)
+            #Create new tabe
+            self.tab_view.addTab(editor, path.name)
+            editor.setText(path.read_text())
+            self.setWindowTitle(path.name)
+            self.current_file = path
+            self.tab_view.setCurrentIndex(self.tab_view.count() - 1)
+            self.statusBar().showMessage(f'opened {path.name}',2000)
 
     def set_cursor_pointer(self, e):
         self.setCursor(Qt.PointingHandCursor)
@@ -435,6 +469,12 @@ class MainWindow(QMainWindow):
     def tree_view_context_menu(self):
         pass
         
+    def find_tab_index(self, tab_name):
+        for i in range(self.tab_view.count()):
+            if self.tab_view.tabText(i) == tab_name:
+                return i
+        return -1
+    
     def tree_view_clicked(self, index: QModelIndex):
         path = self.model.filePath(index)
         p = Path(path)
@@ -500,10 +540,18 @@ class MainWindow(QMainWindow):
         ...
     def cut(self):
         ...
+                    
+    def gen_DOM(self):
+        file_path = self.current_file
+        logging.info('Generating DOM; path: {}'.format(file_path))
         
-    def updateDOM(self):
-        if self.current_file:
-            with open(self.current_file, "r") as file:
+        if not str(file_path).endswith(".html"):
+            logging.info(f'no es html {file_path}')
+            return
+            
+
+        if file_path:
+            with open(file_path, "r") as file:
                 content = file.read()
 
                 # Generar el gráfico del DOM dentro de generate_dom_graph
@@ -540,80 +588,7 @@ class MainWindow(QMainWindow):
 
                     return graph
 
-                # Generar el gráfico del DOM utilizando la función generate_dom_graph dentro de generateDOM
-                graph = generate_dom_graph(content)
-
-                # Obtener el nombre del archivo
-                file_name = os.path.basename(self.current_file)
-
-                # Obtener la extensión del archivo
-                file_ext = os.path.splitext(file_name)[1]
-
-                # Ruta de la carpeta de destino
-                output_folder = 'DOMS'
-
-                # Crear la carpeta de destino si no existe
-                if not os.path.exists(output_folder):
-                    os.makedirs(output_folder)
-
-                # Ruta del archivo PNG
-                png_name = f'{os.path.splitext(file_name)[0]}_dom_graph'
-                png_path = os.path.join(output_folder, png_name)
-
-                # Ruta del archivo DOT
-                dot_name = f'{os.path.splitext(file_name)[0]}_dom_graph.dot'
-                dot_path = os.path.join(output_folder, dot_name)
-
-                # Guardar el gráfico como archivo de imagen PNG
-                graph.render(png_path, view=True)
-
-                # Guardar el gráfico como archivo DOT
-                with open(dot_path, 'w') as dot_file:
-                    dot_file.write(graph.source) 
-                    
-    def gen_DOM(self):
-        file_path = self.current_file
-        logging.info('Generating DOM; path: {}'.format(file_path))
-
-        if file_path:
-            with open(file_path, "r") as file:
-                content = file.read()
-
-                # Generar el gráfico del DOM dentro de generateDOM
-                def generate_dom_graph(html):
-                    # Analizar el HTML con BeautifulSoup
-                    soup = BeautifulSoup(html, 'html.parser')
-
-                    # Crear un gráfico de Graphviz
-                    graph = Digraph(format='png')
-
-                    # Función recursiva para generar el gráfico del DOM
-                    def generate_dom(node, parent_id=None):
-                        # Obtener el nombre de la etiqueta HTML
-                        tag_name = node.name if node.name else 'text'
-
-                        # Generar un identificador único para el nodo
-                        node_id = f'{tag_name}_{id(node)}'
-
-                        # Agregar el nodo al gráfico
-                        graph.node(node_id, label=tag_name)
-
-                        # Agregar una arista desde el padre (si existe)
-                        if parent_id:
-                            graph.edge(parent_id, node_id)
-
-                        # Recorrer los hijos del nodo
-                        for child in node.children:
-                            # Solo procesar nodos del tipo Tag
-                            if child.name:
-                                generate_dom(child, node_id)
-
-                    # Generar el gráfico del DOM comenzando desde el nodo raíz
-                    generate_dom(soup)
-
-                    return graph
-
-                # Generar el gráfico del DOM utilizando la función generate_dom_graph dentro de generateDOM
+                # Generar el gráfico del DOM utilizando la función generate_dom_graph
                 graph = generate_dom_graph(content)
 
                 # Obtener el nombre del archivo
@@ -638,16 +613,62 @@ class MainWindow(QMainWindow):
                 dot_path = os.path.join(output_folder, dot_name)
 
                 # Guardar el gráfico como archivo de imagen PNG
-                graph.render(png_path, view=True)
+                graph.render(png_path, view=False)
 
                 # Guardar el gráfico como archivo DOT
                 with open(dot_path, 'w') as dot_file:
                     dot_file.write(graph.source)
+                    
+                index = self.find_tab_index("DOM")
+                if index != -1:
+                    self.tab_view.removeTab(index)
+
+                # Abrir la imagen generada
+                self.show_DOM(png_path)
+                    
+    def open_image(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+
+        image_file, _ = QFileDialog.getOpenFileName(self,
+                    "Pick An Image", "", "Image Files (*.png *.jpg *.jpeg *.bmp)",
+                    options=options)
+        logging.info(f"Image File: {image_file}")
+        if image_file == '':
+            self.statusBar().showMessage("Canceled", 2000)
+            return
+
+        # Crear una nueva pestaña y mostrar la imagen en un QLabel
+        image_label = QLabel()
+        pixmap = QPixmap(image_file)
+        image_label.setPixmap(pixmap)
+
+        self.tab_view.addTab(image_label, "Image")
+        self.setWindowTitle("Image")
+        self.tab_view.setCurrentIndex(self.tab_view.count() - 1)
+        self.current_file = None
         
+    def show_DOM(self, image_file):
+        image_file = os.path.splitext(image_file)[0] + ".png"
+        logging.info(f"Image file {image_file}")
+        if image_file == '':
+            self.statusBar().showMessage("Canceled", 2000)
+            return
+
+        # Crear una nueva pestaña y mostrar la imagen en un QLabel
+        image_label = QLabel()
+        image_label.setScaledContents(True)
+        pixmap = QPixmap(image_file)
+        scaled_pixmap = pixmap.scaled(image_label.size(), Qt.AspectRatioMode.KeepAspectRatio)
+        image_label.setPixmap(scaled_pixmap)
+        self.tab_view.addTab(image_label, "DOM")
+        self.setWindowTitle("DOM")
+        self.tab_view.setCurrentIndex(self.tab_view.count() - 1)
         
         
 
-
+        
+            
 
 
 if __name__ == "__main__":
