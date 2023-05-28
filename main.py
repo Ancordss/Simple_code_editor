@@ -442,12 +442,8 @@ class MainWindow(QMainWindow):
     
     def close_tab(self, index):
         editor: Editor = self.tab_view.currentWidget()
-        if editor.current_file_changed:
-            dialog = self.show_dialog(
-                "Close", f"Quieres Guardar los cambios a {self.current_file.name}?"
-            )
-            if dialog == QMessageBox.Yes:
-                self.save_file()
+        self.tab_view.removeTab(index)
+         
         
     def show_hide_tab(self,e,type_):
         if type_ == "folder-icon":
