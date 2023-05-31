@@ -125,6 +125,9 @@ class MainWindow(QMainWindow):
         gen_DomAction.setShortcut("Ctrl+G")
         gen_DomAction.triggered.connect(self.gen_DOM)
         
+        close_dom_action = more_menu.addAction("close DOM view")
+        close_dom_action.triggered.connect(self.close_image_label)
+        
 
 
     def get_editor(self) -> QsciScintilla:
@@ -651,15 +654,56 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Canceled", 2000)
             return
 
-        # Crear una nueva pestaña y mostrar la imagen en un QLabel
+        # Obtén el editor actual en la pestaña activa
+        editor = self.tab_view.currentWidget()
+
+        # Verifica si el editor tiene un layout
+        if editor.layout() is None:
+            # Si no tiene un layout, crea uno
+            editor.setLayout(QVBoxLayout())
+
+        # Elimina cualquier QLabel existente en el layout del editor
+        layout = editor.layout()
+        while layout.count() > 0:
+            item = layout.takeAt(0)
+            if item.widget() is not None:
+                item.widget().deleteLater()
+
+        # Crea un QLabel para mostrar la imagen
         image_label = QLabel()
-        image_label.setScaledContents(True)
+        image_label.setFixedSize(400, 300)
+
+
+        # Calcula el nuevo tamaño de la imagen
         pixmap = QPixmap(image_file)
         scaled_pixmap = pixmap.scaled(image_label.size(), Qt.AspectRatioMode.KeepAspectRatio)
         image_label.setPixmap(scaled_pixmap)
-        self.tab_view.addTab(image_label, "DOM")
-        self.setWindowTitle("DOM")
-        self.tab_view.setCurrentIndex(self.tab_view.count() - 1)
+
+        # Agrega el QLabel al layout del editor
+        layout.addWidget(image_label)
+        layout.setAlignment(Qt.AlignTop | Qt.AlignRight)
+
+        # Asegúrate de que el editor sea el widget actual en el tab_view
+        self.tab_view.setCurrentWidget(editor)
+        
+        
+        
+
+    def close_image_label(self):
+    # Obtén el editor actual en la pestaña activa
+        editor = self.tab_view.currentWidget()
+
+        # Verifica si el editor tiene un layout
+        if editor.layout() is not None:
+            # Elimina cualquier QLabel existente en el layout del editor
+            layout = editor.layout()
+            while layout.count():
+                child = layout.takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
+        
+        
+        
         
         
 
