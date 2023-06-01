@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt
 
 
 
+
 from pathlib import Path
 import sys
 
@@ -32,7 +33,7 @@ class MainWindow(QMainWindow):
         self.realtime = False
         self.init_ui()
 
-        
+        self.current_editor = None
         self.current_file = None
         self.current_side_bar = None
         self.file_watcher = QFileSystemWatcher()
@@ -202,6 +203,8 @@ class MainWindow(QMainWindow):
             self.current_file = path
             self.tab_view.setCurrentIndex(self.tab_view.count() - 1)
             self.statusBar().showMessage(f'opened {path.name}',2000)
+            self.current_editor = editor
+            editor.textChanged.connect(self.gen_DOM)
 
     def set_cursor_pointer(self, e):
         self.setCursor(Qt.PointingHandCursor)
@@ -547,83 +550,85 @@ class MainWindow(QMainWindow):
         if not str(file_path).endswith(".html"):
             logging.info(f'no es html {file_path}')
             return
+        
+        
             
 
         if file_path:
-            with open(file_path, "r") as file:
-                content = file.read()
+            content = self.current_editor.text()
+            #content = file.read()
 
-                # Generar el gráfico del DOM dentro de generate_dom_graph
-                def generate_dom_graph(html):
-                    # Analizar el HTML con BeautifulSoup
-                    soup = BeautifulSoup(html, 'html.parser')
+            # Generar el gráfico del DOM dentro de generate_dom_graph
+            def generate_dom_graph(html):
+                # Analizar el HTML con BeautifulSoup
+                soup = BeautifulSoup(html, 'html.parser')
 
-                    # Crear un gráfico de Graphviz
-                    graph = Digraph(format='png')
+                # Crear un gráfico de Graphviz
+                graph = Digraph(format='png')
 
-                    # Función recursiva para generar el gráfico del DOM
-                    def generate_dom(node, parent_id=None):
-                        # Obtener el nombre de la etiqueta HTML
-                        tag_name = node.name if node.name else 'text'
+                # Función recursiva para generar el gráfico del DOM
+                def generate_dom(node, parent_id=None):
+                    # Obtener el nombre de la etiqueta HTML
+                    tag_name = node.name if node.name else 'text'
 
-                        # Generar un identificador único para el nodo
-                        node_id = f'{tag_name}_{id(node)}'
+                    # Generar un identificador único para el nodo
+                    node_id = f'{tag_name}_{id(node)}'
 
-                        # Agregar el nodo al gráfico
-                        graph.node(node_id, label=tag_name)
+                    # Agregar el nodo al gráfico
+                    graph.node(node_id, label=tag_name)
 
-                        # Agregar una arista desde el padre (si existe)
-                        if parent_id:
-                            graph.edge(parent_id, node_id)
+                    # Agregar una arista desde el padre (si existe)
+                    if parent_id:
+                        graph.edge(parent_id, node_id)
 
-                        # Recorrer los hijos del nodo
-                        for child in node.children:
-                            # Solo procesar nodos del tipo Tag
-                            if child.name:
-                                generate_dom(child, node_id)
+                    # Recorrer los hijos del nodo
+                    for child in node.children:
+                        # Solo procesar nodos del tipo Tag
+                        if child.name:
+                            generate_dom(child, node_id)
 
-                    # Generar el gráfico del DOM comenzando desde el nodo raíz
-                    generate_dom(soup)
+                # Generar el gráfico del DOM comenzando desde el nodo raíz
+                generate_dom(soup)
 
-                    return graph
+                return graph
 
                 # Generar el gráfico del DOM utilizando la función generate_dom_graph
-                graph = generate_dom_graph(content)
+            graph = generate_dom_graph(content)
 
-                # Obtener el nombre del archivo
-                file_name = os.path.basename(file_path)
+            # Obtener el nombre del archivo
+            file_name = os.path.basename(file_path)
 
-                # Obtener la extensión del archivo
-                file_ext = os.path.splitext(file_name)[1]
+            # Obtener la extensión del archivo
+            file_ext = os.path.splitext(file_name)[1]
 
-                # Ruta de la carpeta de destino
-                temp_dir = tempfile.gettempdir()
-                output_folder = os.path.join(temp_dir, 'DOOMS')
+            # Ruta de la carpeta de destino
+            temp_dir = tempfile.gettempdir()
+            output_folder = os.path.join(temp_dir, 'DOOMS')
 
-                # Crear la carpeta de destino si no existe
-                os.makedirs(output_folder, exist_ok=True)
+            # Crear la carpeta de destino si no existe
+            os.makedirs(output_folder, exist_ok=True)
 
-                # Ruta del archivo PNG
-                png_name = f'{os.path.splitext(file_name)[0]}_dom_graph'
-                png_path = os.path.join(output_folder, png_name)
+            # Ruta del archivo PNG
+            png_name = f'{os.path.splitext(file_name)[0]}_dom_graph'
+            png_path = os.path.join(output_folder, png_name)
 
-                # Ruta del archivo DOT
-                dot_name = f'{os.path.splitext(file_name)[0]}_dom_graph.dot'
-                dot_path = os.path.join(output_folder, dot_name)
+            # Ruta del archivo DOT
+            dot_name = f'{os.path.splitext(file_name)[0]}_dom_graph.dot'
+            dot_path = os.path.join(output_folder, dot_name)
 
-                # Guardar el gráfico como archivo de imagen PNG
-                graph.render(png_path, view=False)
+            # Guardar el gráfico como archivo de imagen PNG
+            graph.render(png_path, view=False)
 
-                # Guardar el gráfico como archivo DOT
-                with open(dot_path, 'w') as dot_file:
-                    dot_file.write(graph.source)
-                    
-                index = self.find_tab_index("DOM")
-                if index != -1:
-                    self.tab_view.removeTab(index)
+            # Guardar el gráfico como archivo DOT
+            with open(dot_path, 'w') as dot_file:
+                dot_file.write(graph.source)
+                
+            index = self.find_tab_index("DOM")
+            if index != -1:
+                self.tab_view.removeTab(index)
 
-                # Abrir la imagen generada
-                self.show_DOM(png_path)
+            # Abrir la imagen generada
+            self.show_DOM(png_path)
                     
     def open_image(self):
         options = QFileDialog.Options()
