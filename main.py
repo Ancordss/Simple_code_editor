@@ -378,13 +378,22 @@ class MainWindow(QMainWindow):
         self.search_worker = SearchWorker()
         self.search_worker.finished.connect(self.search_finshed)
 
+        search_input.textChanged.connect(self.seachonpath)
         search_input.textChanged.connect(
             lambda text: self.search_worker.update(
                 text,
-                self.model.rootDirectory().absolutePath(),
+                self.seachonpath(),
                 self.search_checkbox.isChecked()
             )
         )
+        
+        # search_input.textChanged.connect(
+        #     lambda text: self.search_worker.update(
+        #         text,
+        #         self.model.rootDirectory().absolutePath(),
+        #         self.search_checkbox.isChecked()
+        #     )
+        # )
 
         
         #####################
@@ -421,6 +430,17 @@ class MainWindow(QMainWindow):
         body_frame.setLayout(body)
 
         self.setCentralWidget(body_frame)
+        
+    def seachonpath(self):
+        #print(self.current_file)
+        # lambda text: self.search_worker.update(
+        #         text,
+        #         self.current_file,  # Ruta del archivo específico
+        #         self.search_checkbox.isChecked()
+        # )
+        return str(self.current_file)
+
+        
 
     def search_finshed(self, items):
         self.search_list_view.clear()
@@ -720,4 +740,3 @@ if __name__ == "__main__":
     app = QApplication([])
     window = MainWindow()
     sys.exit(app.exec_())
-
