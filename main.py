@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO)
 class MainWindow(QMainWindow):
     def __init__(self):
         super(QMainWindow, self).__init__()
-        self.side_bar_clr = "#282c34"
+        self.side_bar_clr = "#185141"
         self.realtime = False
         self.init_ui()
 
@@ -44,7 +44,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("PyQt5 editor")
         self.resize(1300, 900)
 
-        self.setStyleSheet(open("./src/css/style.qss", "r").read())
+        self.setStyleSheet(open("./src/css/style.css", "r").read())
 
         ##alternative consolel
         self.window_font = QFont("Fire Code")
@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
     def set_up_status_bar(self):
         #Create status bar
         stat = QStatusBar(self)
-        stat.setStyleSheet("color: #282c34;")
+        stat.setStyleSheet("color: #abb2bf;")
         stat.showMessage("Ready",300)
         self.setStatusBar(stat)
         
@@ -230,14 +230,14 @@ class MainWindow(QMainWindow):
         frame.setContentsMargins(0,0,0,0)
         frame.setStyleSheet('''
                                       QFrame{
-                                          background-color: #21252b;
+                                          background-color: #05251C;
                                           border-radius: 5px;
                                           border: none;
                                           padding: 5px;
-                                          color: #D3D3D3;
+                                          color: #ADDED1;
                                         }
                                         QFrame:hover{
-                                            color: white;
+                                            color: #00ff00;
                                             
                                         }
             ''')
@@ -402,11 +402,11 @@ class MainWindow(QMainWindow):
         self.search_list_view.setFont(QFont("FiraCode", 13))
         self.search_list_view.setStyleSheet("""
         QListWidget {
-            background-color: #21252b;
+            background-color: #0C3127;
             border-radius: 5px;
-            border: 1px solid #D3D3D3;
+            border: 1px solid #21B48B;
             padding: 5px;
-            color: #D3D3D3;
+            color: #21B48B;
         }
         """)
 

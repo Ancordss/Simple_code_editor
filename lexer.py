@@ -21,7 +21,7 @@ class HTMLCustomLexer(QsciLexerCustom):
         super(HTMLCustomLexer, self).__init__(parent)
 
         self.color1 = "#abb2bf"
-        self.color2 = "#282c34"
+        self.color2 = "#175242"
 
         # Default settings
         self.setDefaultColor(QColor(self.color1))
@@ -55,7 +55,7 @@ class HTMLCustomLexer(QsciLexerCustom):
 
     def load_theme(self):
         with open(self.theme, "r") as f:
-            theme_data = json.load(f)
+                theme_data = json.load(f)
 
         # Update colors from theme
         if "color1" in theme_data:
@@ -71,11 +71,11 @@ class HTMLCustomLexer(QsciLexerCustom):
         self.setColor(QColor(theme_data.get("comments_color", "#777777")), self.COMMENTS)
 
         # Set paper colors
-        self.setPaper(QColor(self.color2), self.DEFAULT)
-        self.setPaper(QColor(self.color2), self.KEYWORD)
-        self.setPaper(QColor(self.color2), self.STRING)
-        self.setPaper(QColor(self.color2), self.BRACKETS)
-        self.setPaper(QColor(self.color2), self.COMMENTS)
+        self.setPaper(QColor("#175242"), self.DEFAULT)  # Fondo verde
+        self.setPaper(QColor("#175242"), self.KEYWORD)  # Fondo verde
+        self.setPaper(QColor("#175242"), self.STRING)  # Fondo verde
+        self.setPaper(QColor("#175242"), self.BRACKETS)  # Fondo verde
+        self.setPaper(QColor("#175242"), self.COMMENTS)  # Fondo verde
 
         # Set font
         self.setFont(QFont("Consolas", 14, weight=QFont.Bold), self.DEFAULT)
