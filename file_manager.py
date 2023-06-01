@@ -171,11 +171,11 @@ class FileManager(QTreeView):
                 for i in self.selectionModel().selectedRows():
                     path = Path(self.model.filePath(i))
                     self.delete_path(path)
-                    for editor in self.tab_view.findChildren(Editor):
-                        if editor.path.name == path.name:
-                            self.tab_view.removeTab(
-                                self.tab_view.indexOf(editor)
-                            )
+                    # for editor in self.tab_view.findChildren(Editor):
+                    #     if editor.path.name == path.name:
+                    #         self.tab_view.removeTab(
+                    #             self.tab_view.indexOf(editor)
+                    #         )
 
     def action_new_file(self, ix: QModelIndex):
         # UPDATED EP 9
